@@ -68,7 +68,7 @@ docker run -d \
   --name employee-backend \
   --network employee-net \
   -p 8080:8080 \
-  -e SPRING_DATASOURCE_URL="jdbc:mysql://employees-db.c89c88yqgk5q.us-east-1.rds.amazonaws.com/employee_attendance_db" \
+  -e SPRING_DATASOURCE_URL="jdbc:mysql://${DB_HOST}:3306/employee_attendance_db" \
   -e SPRING_DATASOURCE_USERNAME="$DB_USER" \
   -e SPRING_DATASOURCE_PASSWORD="$DB_PASS" \
   -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
