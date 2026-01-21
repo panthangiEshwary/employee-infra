@@ -1,15 +1,17 @@
 #!/bin/bash
 set -ex
 
-# Update system
+# ---------------------------
+# System Update & Docker
+# ---------------------------
 yum update -y
-
-# Install Docker (correct way)
 yum install -y docker
 systemctl start docker
 systemctl enable docker
 
-# Create directories
+# ---------------------------
+# Directory Structure
+# ---------------------------
 mkdir -p /opt/monitoring/prometheus/rules
 mkdir -p /opt/monitoring/grafana/provisioning/dashboards
 mkdir -p /opt/monitoring/grafana/provisioning/datasources
@@ -28,9 +30,8 @@ curl -L https://grafana.com/api/dashboards/4701/revisions/4/download \
 curl -L https://grafana.com/api/dashboards/6756/revisions/2/download \
   -o /opt/monitoring/grafana/dashboards/spring-boot.json
 
-
 # ---------------------------
-# Prometheus Config
+# Prometheus Config (FIXED)
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/prometheus.yml
 global:
@@ -46,21 +47,17 @@ scrape_configs:
     metrics_path: "/actuator/prometheus"
     static_configs:
       - targets: ["${app_private_ip}:8080"]
-  - job_name: "angular"
-    metrics_path: "/actuator/prometheus"
-    static_configs:
-      - targets: ["${app_private_ip}:80"]
+
   - job_name: "node"
     static_configs:
       - targets: ["${app_private_ip}:9100"]
-
 
 rule_files:
   - "rules/*.yml"
 EOF
 
 # ---------------------------
-# Prometheus Alert Rules
+# Prometheus Alert Rules (FIXED)
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/rules/alerts.yml
 groups:
@@ -68,23 +65,15 @@ groups:
     rules:
       - alert: AppDown
         expr: up{job="spring-app"} == 0
-        for: 5s
+        for: 10s
         labels:
           severity: critical
         annotations:
           description: "Spring Boot Application is DOWN"
 
-      - alert: FrontendDown
-        expr: up{job="angular"} == 0
-        for: 5s
-        labels:
-          severity: critical
-        annotations:
-          description: "Angular Frontend Application is DOWN"
-
       - alert: NodeDown
         expr: up{job="node"} == 0
-        for: 5s
+        for: 10s
         labels:
           severity: critical
         annotations:
@@ -92,7 +81,7 @@ groups:
 
       - alert: HighCPUUsage
         expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 80
-        for: 5s
+        for: 30s
         labels:
           severity: warning
         annotations:
@@ -100,7 +89,7 @@ groups:
 
       - alert: HighMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 75
-        for: 5s
+        for: 30s
         labels:
           severity: warning
         annotations:
@@ -108,7 +97,7 @@ groups:
 EOF
 
 # ---------------------------
-# Prometheus Alert Rules
+# Alertmanager Config
 # ---------------------------
 cat <<EOF > /opt/monitoring/alertmanager/alertmanager.yml
 route:
@@ -122,7 +111,7 @@ receivers:
 EOF
 
 # ---------------------------
-# Grafana Dashboard Provider
+# Grafana Provisioning
 # ---------------------------
 cat <<EOF > /opt/monitoring/grafana/provisioning/dashboards/dashboards.yml
 apiVersion: 1
@@ -137,7 +126,6 @@ providers:
       path: /var/lib/grafana/dashboards
 EOF
 
-
 cat <<EOF > /opt/monitoring/grafana/provisioning/datasources/prometheus.yml
 apiVersion: 1
 
@@ -150,9 +138,14 @@ datasources:
     editable: true
 EOF
 
+# ---------------------------
+# Docker Network
+# ---------------------------
 docker network create employee-mon || true
 
+# ---------------------------
 # Run Prometheus
+# ---------------------------
 docker run -d \
   --name prometheus \
   --network employee-mon \
@@ -162,7 +155,9 @@ docker run -d \
   --restart unless-stopped \
   prom/prometheus
 
+# ---------------------------
 # Run Grafana
+# ---------------------------
 docker run -d \
   --name grafana \
   --network employee-mon \
@@ -172,7 +167,9 @@ docker run -d \
   --restart unless-stopped \
   grafana/grafana
 
-#Run alertmanager
+# ---------------------------
+# Run Alertmanager
+# ---------------------------
 docker run -d \
   --name alertmanager \
   --network employee-mon \
