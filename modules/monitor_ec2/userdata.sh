@@ -97,11 +97,18 @@ groups:
 EOF
 
 # ---------------------------
-# Alertmanager Config
+# Alertmanager Config (FIXED)
 # ---------------------------
 cat <<EOF > /opt/monitoring/alertmanager/alertmanager.yml
+global:
+  resolve_timeout: 30s
+
 route:
   receiver: "n8n"
+  group_by: ["alertname", "instance"]
+  group_wait: 5s
+  group_interval: 15s
+  repeat_interval: 1m
 
 receivers:
   - name: "n8n"
