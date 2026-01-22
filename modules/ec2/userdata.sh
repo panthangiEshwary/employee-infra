@@ -105,6 +105,22 @@ echo "===== DEPLOYMENT COMPLETED ====="
 EOF
 
 ########################################
+# cAdvisor (Container Metrics)
+########################################
+docker stop cadvisor || true
+docker rm cadvisor || true
+
+docker run -d \
+  --name cadvisor \
+  --restart unless-stopped \
+  -p 8085:8080 \
+  -v /:/rootfs:ro \
+  -v /var/run:/var/run:ro \
+  -v /sys:/sys:ro \
+  -v /var/lib/docker/:/var/lib/docker:ro \
+  gcr.io/cadvisor/cadvisor:latest
+  
+########################################
 # Make deploy script executable
 ########################################
 chmod +x /opt/app/deploy.sh
