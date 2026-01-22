@@ -69,7 +69,7 @@ groups:
   rules:
   - alert: AppDown
     expr: up{job="spring-app"} == 0
-    for: 10s
+    for: 5s
     labels:
       severity: critical
     annotations:
@@ -92,20 +92,20 @@ groups:
       description: "Container {{ \$labels.name }} is DOWN on {{ \$labels.instance }}"
 
   - alert: HighCPUUsage
-    expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 80
+    expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 90
     for: 30s
     labels:
       severity: warning
     annotations:
-      description: "High CPU Usage (>80%)"
+      description: "High CPU Usage (>90%)"
 
   - alert: HighMemoryUsage
-    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 75
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
     for: 30s
     labels:
       severity: warning
     annotations:
-      description: "High Memory Usage (>75%)"
+      description: "High Memory Usage (>90%)"
 EOF
 
 ########################################
@@ -113,7 +113,7 @@ EOF
 ########################################
 cat <<EOF > /opt/monitoring/alertmanager/alertmanager.yml
 global:
-  resolve_timeout: 30s
+  resolve_timeout: 10s
 
 route:
   receiver: "n8n"
