@@ -67,22 +67,7 @@ cat <<EOF > /opt/monitoring/prometheus/rules/alerts.yml
 groups:
 - name: basic-alerts
   rules:
-  - alert: AppDown
-    expr: up{job="spring-app"} == 0
-    for: 5s
-    labels:
-      severity: critical
-    annotations:
-      description: "Spring Boot Application is DOWN"
-
-  - alert: NodeDown
-    expr: up{job="node"} == 0
-    for: 10s
-    labels:
-      severity: critical
-    annotations:
-      description: "Node Exporter is DOWN"
-
+  
   - alert: ContainerDown
     expr: time() - container_last_seen{name!=""} > 60
     for: 30s
@@ -106,6 +91,14 @@ groups:
       severity: warning
     annotations:
       description: "High Memory Usage (>90%)"
+
+- name: jvm-micrometer-compat
+  rules:
+    - record: jvm_classes_loaded
+      expr: jvm_classes_loaded_classes
+
+    - record: jvm_classes_unloaded_total
+      expr: jvm_classes_unloaded_classes_total
 EOF
 
 ########################################
