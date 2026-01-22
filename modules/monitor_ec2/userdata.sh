@@ -69,8 +69,8 @@ groups:
   rules:
   
   - alert: ContainerDown
-    expr: time() - container_last_seen{name!=""} > 60
-    for: 30s
+    expr: time() - container_last_seen{name!=""} > 3
+    for: 5s
     labels:
       severity: critical
     annotations:
@@ -78,7 +78,7 @@ groups:
 
   - alert: HighCPUUsage
     expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 90
-    for: 30s
+    for: 120s
     labels:
       severity: warning
     annotations:
@@ -86,7 +86,7 @@ groups:
 
   - alert: HighMemoryUsage
     expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
-    for: 30s
+    for: 120s
     labels:
       severity: warning
     annotations:
