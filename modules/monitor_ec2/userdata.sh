@@ -52,10 +52,14 @@ scrape_configs:
     static_configs:
       - targets: ["${app_private_ip}:9100"]
 
+  # 🔴 ADD THIS (cAdvisor)
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["${app_private_ip}:8080"]
+
 rule_files:
   - "rules/*.yml"
 EOF
-
 # ---------------------------
 # Prometheus Alert Rules (FIXED)
 # ---------------------------
@@ -78,6 +82,15 @@ groups:
           severity: critical
         annotations:
           description: "Node Exporter is DOWN"
+
+      # 🔴 ADD THIS (Container-level alert)
+      - alert: ContainerDown
+        expr: time() - container_last_seen > 60
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          description: "Container {{ \$labels.container }} is DOWN on {{ \$labels.instance }}"
 
       - alert: HighCPUUsage
         expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 80
@@ -105,7 +118,7 @@ global:
 
 route:
   receiver: "n8n"
-  group_by: ["alertname", "instance"]
+  group_by: ["alertname", "instance", "container"]
   group_wait: 5s
   group_interval: 15s
   repeat_interval: 1m
