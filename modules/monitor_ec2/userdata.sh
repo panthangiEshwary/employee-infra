@@ -1,26 +1,26 @@
 #!/bin/bash
 set -ex
 
-# ---------------------------
+########################################
 # System Update & Docker
-# ---------------------------
+########################################
 yum update -y
 yum install -y docker
-systemctl start docker
 systemctl enable docker
+systemctl start docker
 
-# ---------------------------
+########################################
 # Directory Structure
-# ---------------------------
+########################################
 mkdir -p /opt/monitoring/prometheus/rules
 mkdir -p /opt/monitoring/grafana/provisioning/dashboards
 mkdir -p /opt/monitoring/grafana/provisioning/datasources
 mkdir -p /opt/monitoring/grafana/dashboards
 mkdir -p /opt/monitoring/alertmanager
 
-# ---------------------------
+########################################
 # Download Grafana Dashboards
-# ---------------------------
+########################################
 curl -L https://grafana.com/api/dashboards/1860/revisions/37/download \
   -o /opt/monitoring/grafana/dashboards/node-exporter.json
 
@@ -30,9 +30,9 @@ curl -L https://grafana.com/api/dashboards/4701/revisions/4/download \
 curl -L https://grafana.com/api/dashboards/6756/revisions/2/download \
   -o /opt/monitoring/grafana/dashboards/spring-boot.json
 
-# ---------------------------
-# Prometheus Config (FIXED)
-# ---------------------------
+########################################
+# Prometheus Config
+########################################
 cat <<EOF > /opt/monitoring/prometheus/prometheus.yml
 global:
   scrape_interval: 5s
@@ -52,17 +52,17 @@ scrape_configs:
     static_configs:
       - targets: ["${app_private_ip}:9100"]
 
-  # 🔴 ADD THIS (cAdvisor)
   - job_name: "cadvisor"
     static_configs:
-      - targets: ["${app_private_ip}:8080"]
+      - targets: ["${app_private_ip}:8085"]
 
 rule_files:
   - "rules/*.yml"
 EOF
-# ---------------------------
-# Prometheus Alert Rules (FIXED)
-# ---------------------------
+
+########################################
+# Prometheus Alert Rules
+########################################
 cat <<EOF > /opt/monitoring/prometheus/rules/alerts.yml
 groups:
   - name: basic-alerts
@@ -83,14 +83,13 @@ groups:
         annotations:
           description: "Node Exporter is DOWN"
 
-      # 🔴 ADD THIS (Container-level alert)
       - alert: ContainerDown
-        expr: time() - container_last_seen > 60
+        expr: time() - container_last_seen{name!=""} > 60
         for: 30s
         labels:
           severity: critical
         annotations:
-          description: "Container {{ \$labels.container }} is DOWN on {{ \$labels.instance }}"
+          description: "Container {{ \$labels.name }} is DOWN on {{ \$labels.instance }}"
 
       - alert: HighCPUUsage
         expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 80
@@ -109,16 +108,16 @@ groups:
           description: "High Memory Usage (>75%)"
 EOF
 
-# ---------------------------
-# Alertmanager Config (FIXED)
-# ---------------------------
+########################################
+# Alertmanager Config
+########################################
 cat <<EOF > /opt/monitoring/alertmanager/alertmanager.yml
 global:
   resolve_timeout: 30s
 
 route:
   receiver: "n8n"
-  group_by: ["alertname", "instance", "container"]
+  group_by: ["alertname", "instance", "name"]
   group_wait: 5s
   group_interval: 15s
   repeat_interval: 1m
@@ -130,9 +129,9 @@ receivers:
         send_resolved: true
 EOF
 
-# ---------------------------
+########################################
 # Grafana Provisioning
-# ---------------------------
+########################################
 cat <<EOF > /opt/monitoring/grafana/provisioning/dashboards/dashboards.yml
 apiVersion: 1
 
@@ -140,8 +139,6 @@ providers:
   - name: "Prebuilt Dashboards"
     folder: "Auto Dashboards"
     type: file
-    disableDeletion: false
-    editable: true
     options:
       path: /var/lib/grafana/dashboards
 EOF
@@ -155,17 +152,16 @@ datasources:
     access: proxy
     url: http://prometheus:9090
     isDefault: true
-    editable: true
 EOF
 
-# ---------------------------
+########################################
 # Docker Network
-# ---------------------------
+########################################
 docker network create employee-mon || true
 
-# ---------------------------
+########################################
 # Run Prometheus
-# ---------------------------
+########################################
 docker run -d \
   --name prometheus \
   --network employee-mon \
@@ -175,9 +171,9 @@ docker run -d \
   --restart unless-stopped \
   prom/prometheus
 
-# ---------------------------
+########################################
 # Run Grafana
-# ---------------------------
+########################################
 docker run -d \
   --name grafana \
   --network employee-mon \
@@ -187,9 +183,9 @@ docker run -d \
   --restart unless-stopped \
   grafana/grafana
 
-# ---------------------------
+########################################
 # Run Alertmanager
-# ---------------------------
+########################################
 docker run -d \
   --name alertmanager \
   --network employee-mon \
