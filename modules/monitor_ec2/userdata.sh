@@ -5,7 +5,7 @@ set -ex
 # System Update & Docker
 # ---------------------------
 yum update -y
-yum install -y docker
+yum install -y docker jq   # <-- jq ADDED (IMPORTANT)
 systemctl start docker
 systemctl enable docker
  
@@ -29,6 +29,21 @@ curl -L https://grafana.com/api/dashboards/4701/revisions/4/download \
  
 curl -L https://grafana.com/api/dashboards/6756/revisions/2/download \
   -o /opt/monitoring/grafana/dashboards/spring-boot.json
+ 
+# ---------------------------
+# FIX Grafana Dashboards for Provisioning  ✅✅✅
+# ---------------------------
+for f in /opt/monitoring/grafana/dashboards/*.json; do
+  jq '
+    del(.__inputs, .__requires)
+    | walk(
+        if type == "object" and has("datasource") then
+          .datasource = "Prometheus"
+        else .
+        end
+      )
+  ' "$f" > /tmp/dashboard.json && mv /tmp/dashboard.json "$f"
+done
  
 # ---------------------------
 # Prometheus Config 
@@ -57,7 +72,7 @@ rule_files:
 EOF
  
 # ---------------------------
-# Prometheus Alert Rules (FIXED)
+# Prometheus Alert Rules
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/rules/alerts.yml
 groups:
@@ -94,14 +109,6 @@ groups:
           severity: warning
         annotations:
           description: "High Memory Usage (>75%)"
-  - name: jvm-micrometer-compat
-    rules:
-      - record: jvm_classes_loaded
-        expr: jvm_classes_loaded_classes
-
-      - record: jvm_classes_unloaded_total
-        expr: jvm_classes_unloaded_classes_total
-      
 EOF
  
 # ---------------------------
