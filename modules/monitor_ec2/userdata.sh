@@ -46,6 +46,25 @@ for f in /opt/monitoring/grafana/dashboards/*.json; do
 done
 
 # ---------------------------
+# FIX Node Exporter variables (OPTIONAL but recommended)
+# ---------------------------
+jq '
+  if .title == "Node Exporter Full" then
+    .templating.list |= map(
+      if .name == "job" then
+        .query = "label_values(up, job)"
+      elif .name == "instance" then
+        .query = "label_values(up{job=\"$job\"}, instance)"
+      else .
+      end
+    )
+  else .
+  end
+' /opt/monitoring/grafana/dashboards/node-exporter.json \
+> /tmp/node-exporter-fixed.json && \
+mv /tmp/node-exporter-fixed.json /opt/monitoring/grafana/dashboards/node-exporter.json
+
+# ---------------------------
 # FIX Spring Boot Statistics variables (CRITICAL)
 # ---------------------------
 jq '
