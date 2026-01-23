@@ -46,6 +46,31 @@ for f in /opt/monitoring/grafana/dashboards/*.json; do
 done
 
 # ---------------------------
+# FIX Spring Boot Statistics variables (CRITICAL)
+# ---------------------------
+jq '
+  if .title == "Spring Boot Statistics" then
+    .templating.list |= map(
+      if .name == "instance" then
+        .query = "label_values(up{job=\"spring-app\"}, instance)"
+      elif .name == "application" then
+        .query = "label_values(application)"
+      elif .name == "hikaricp" then
+        .query = "label_values(jdbc_connections_active, pool)"
+      elif .name == "memory_pool_heap" then
+        .query = "label_values(jvm_memory_used_bytes{area=\"heap\"}, id)"
+      elif .name == "memory_pool_nonheap" then
+        .query = "label_values(jvm_memory_used_bytes{area=\"nonheap\"}, id)"
+      else .
+      end
+    )
+  else .
+  end
+' /opt/monitoring/grafana/dashboards/spring-boot.json \
+  > /tmp/spring-boot-fixed.json && \
+mv /tmp/spring-boot-fixed.json /opt/monitoring/grafana/dashboards/spring-boot.json
+
+# ---------------------------
 # Prometheus Config
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/prometheus.yml
