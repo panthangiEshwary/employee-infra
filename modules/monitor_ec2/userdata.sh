@@ -5,7 +5,7 @@ set -ex
 # System Update & Docker
 # ---------------------------
 yum update -y
-yum install -y docker jq
+yum install -y docker jq curl
 systemctl enable docker
 systemctl start docker
 
@@ -31,7 +31,7 @@ curl -fsSL https://grafana.com/api/dashboards/6756/revisions/2/download \
   -o /opt/monitoring/grafana/dashboards/spring-boot.json
 
 # ---------------------------
-# FIX Grafana Dashboards for Provisioning ✅
+# FIX Grafana Dashboards for Provisioning
 # ---------------------------
 for f in /opt/monitoring/grafana/dashboards/*.json; do
   jq '
@@ -46,7 +46,7 @@ for f in /opt/monitoring/grafana/dashboards/*.json; do
 done
 
 # ---------------------------
-# FIX Node Exporter variables ✅
+# FIX Node Exporter variables
 # ---------------------------
 jq '
   if .title == "Node Exporter Full" then
@@ -65,7 +65,7 @@ jq '
 mv /tmp/node-exporter-fixed.json /opt/monitoring/grafana/dashboards/node-exporter.json
 
 # ---------------------------
-# FIX Spring Boot Statistics variables ✅
+# FIX Spring Boot Statistics variables
 # ---------------------------
 jq '
   if .title == "Spring Boot Statistics" then
@@ -90,7 +90,7 @@ jq '
 mv /tmp/spring-boot-fixed.json /opt/monitoring/grafana/dashboards/spring-boot.json
 
 # ---------------------------
-# FIX JVM (Micrometer) uptime panels ✅ FINAL FIX
+# FIX JVM (Micrometer) uptime panels
 # ---------------------------
 jq '
   if .title == "JVM (Micrometer)" then
@@ -109,11 +109,20 @@ jq '
 mv /tmp/jvm-fixed.json /opt/monitoring/grafana/dashboards/jvm.json
 
 # ---------------------------
-# Prometheus Config
+# WAIT FOR SPRING BOOT (CRITICAL)
+# ---------------------------
+until curl -s http://localhost:8080/actuator/health | grep UP; do
+  echo "Waiting for Spring Boot..."
+  sleep 2
+done
+
+# ---------------------------
+# Prometheus Config (FAST)
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/prometheus.yml
 global:
-  scrape_interval: 5s
+  scrape_interval: 2s
+  evaluation_interval: 2s
 
 alerting:
   alertmanagers:
@@ -123,10 +132,13 @@ alerting:
 scrape_configs:
   - job_name: "spring-app"
     metrics_path: "/actuator/prometheus"
+    scrape_interval: 2s
+    scrape_timeout: 1s
     static_configs:
       - targets: ["${app_private_ip}:8080"]
 
   - job_name: "node"
+    scrape_interval: 2s
     static_configs:
       - targets: ["${app_private_ip}:9100"]
 
@@ -152,18 +164,6 @@ groups:
         for: 10s
         labels:
           severity: critical
-
-      - alert: HighCPUUsage
-        expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 90
-        for: 10s
-        labels:
-          severity: warning
-
-      - alert: HighMemoryUsage
-        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
-        for: 10s
-        labels:
-          severity: warning
 EOF
 
 # ---------------------------
