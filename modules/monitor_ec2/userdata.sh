@@ -31,7 +31,7 @@ curl -fsSL https://grafana.com/api/dashboards/6756/revisions/2/download \
   -o /opt/monitoring/grafana/dashboards/spring-boot.json
 
 # ---------------------------
-# FIX Grafana Dashboards for Provisioning ✅ (CRITICAL)
+# FIX Grafana Dashboards for Provisioning ✅
 # ---------------------------
 for f in /opt/monitoring/grafana/dashboards/*.json; do
   jq '
@@ -46,7 +46,7 @@ for f in /opt/monitoring/grafana/dashboards/*.json; do
 done
 
 # ---------------------------
-# FIX Node Exporter variables (OPTIONAL but recommended)
+# FIX Node Exporter variables ✅
 # ---------------------------
 jq '
   if .title == "Node Exporter Full" then
@@ -65,7 +65,7 @@ jq '
 mv /tmp/node-exporter-fixed.json /opt/monitoring/grafana/dashboards/node-exporter.json
 
 # ---------------------------
-# FIX Spring Boot Statistics variables (CRITICAL)
+# FIX Spring Boot Statistics variables ✅
 # ---------------------------
 jq '
   if .title == "Spring Boot Statistics" then
@@ -86,8 +86,27 @@ jq '
   else .
   end
 ' /opt/monitoring/grafana/dashboards/spring-boot.json \
-  > /tmp/spring-boot-fixed.json && \
+> /tmp/spring-boot-fixed.json && \
 mv /tmp/spring-boot-fixed.json /opt/monitoring/grafana/dashboards/spring-boot.json
+
+# ---------------------------
+# FIX JVM (Micrometer) uptime panels ✅ FINAL FIX
+# ---------------------------
+jq '
+  if .title == "JVM (Micrometer)" then
+    .panels |= map(
+      if .title == "Uptime" then
+        .targets[0].expr = "jvm_uptime_seconds{job=\"spring-app\"}"
+      elif .title == "Start time" then
+        .targets[0].expr = "time() - jvm_uptime_seconds{job=\"spring-app\"}"
+      else .
+      end
+    )
+  else .
+  end
+' /opt/monitoring/grafana/dashboards/jvm.json \
+> /tmp/jvm-fixed.json && \
+mv /tmp/jvm-fixed.json /opt/monitoring/grafana/dashboards/jvm.json
 
 # ---------------------------
 # Prometheus Config
@@ -127,32 +146,24 @@ groups:
         for: 10s
         labels:
           severity: critical
-        annotations:
-          description: "Spring Boot Application is DOWN"
 
       - alert: NodeDown
         expr: up{job="node"} == 0
         for: 10s
         labels:
           severity: critical
-        annotations:
-          description: "Node Exporter is DOWN"
 
       - alert: HighCPUUsage
         expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 90
         for: 10s
         labels:
           severity: warning
-        annotations:
-          description: "High CPU Usage (>90%)"
 
       - alert: HighMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
         for: 10s
         labels:
           severity: warning
-        annotations:
-          description: "High Memory Usage (>90%)"
 EOF
 
 # ---------------------------
@@ -165,9 +176,6 @@ global:
 route:
   receiver: "n8n"
   group_by: ["alertname", "instance"]
-  group_wait: 5s
-  group_interval: 5s
-  repeat_interval: 1m
 
 receivers:
   - name: "n8n"
@@ -181,27 +189,22 @@ EOF
 # ---------------------------
 cat <<EOF > /opt/monitoring/grafana/provisioning/dashboards/dashboards.yml
 apiVersion: 1
-
 providers:
   - name: "Prebuilt Dashboards"
     folder: "Auto Dashboards"
     type: file
-    disableDeletion: false
-    editable: true
     options:
       path: /var/lib/grafana/dashboards
 EOF
 
 cat <<EOF > /opt/monitoring/grafana/provisioning/datasources/prometheus.yml
 apiVersion: 1
-
 datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
-    editable: true
 EOF
 
 # ---------------------------
