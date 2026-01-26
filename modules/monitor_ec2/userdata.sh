@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -euxo pipefail
 
 # ---------------------------
 # FIX 1: Correct package manager for AL2023
