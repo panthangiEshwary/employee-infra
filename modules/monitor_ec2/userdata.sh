@@ -13,8 +13,8 @@ systemctl start docker
 # ---------------------------
 # FIX 2: Define required IP variables (from Terraform)
 # ---------------------------
-app_private_ip="${APP_PRIVATE_IP}"
-n8n_private_ip="${N8N_PRIVATE_IP}"
+app_private_ip="${app_private_ip}"
+n8n_private_ip="${n8n_private_ip}"
 
 # ---------------------------
 # Directory Structure
