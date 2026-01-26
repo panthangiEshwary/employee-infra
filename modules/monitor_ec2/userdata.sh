@@ -109,14 +109,6 @@ jq '
 mv /tmp/jvm-fixed.json /opt/monitoring/grafana/dashboards/jvm.json
 
 # ---------------------------
-# WAIT FOR SPRING BOOT (CRITICAL)
-# ---------------------------
-until curl -s http://localhost:8080/actuator/health | grep UP; do
-  echo "Waiting for Spring Boot..."
-  sleep 2
-done
-
-# ---------------------------
 # Prometheus Config (FAST)
 # ---------------------------
 cat <<EOF > /opt/monitoring/prometheus/prometheus.yml
