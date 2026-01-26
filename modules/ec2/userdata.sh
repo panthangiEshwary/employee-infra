@@ -10,8 +10,7 @@ echo "===== USER-DATA STARTED ====="
 # Update system & install Docker
 ########################################
 dnf update -y
-dnf install -y docker
-dnf install -y aws-cli
+dnf install -y docker aws-cli
 
 systemctl enable docker
 systemctl start docker
@@ -62,14 +61,12 @@ docker rm employee-backend || true
 docker rmi employee-backend || true
 docker network create employee-net || true
 
+# REQUIRED FOR GRAFANA / PROMETHEUS
 docker run -d \
   --name employee-backend \
   --network employee-net \
   -p 8080:8080 \
-  \
-  # ✅ ADDITION (REQUIRED FOR GRAFANA / PROMETHEUS)
   -e SPRING_APPLICATION_NAME=spring-app \
-  \
   -e SPRING_DATASOURCE_URL="jdbc:mysql://${DB_HOST}:3306/employee_attendance_db" \
   -e SPRING_DATASOURCE_USERNAME="$DB_USER" \
   -e SPRING_DATASOURCE_PASSWORD="$DB_PASS" \
@@ -94,7 +91,7 @@ docker run -d \
   "$FRONTEND_IMAGE"
 
 ########################################
-# node exporter
+# Node Exporter
 ########################################
 docker run -d \
   --name node-exporter \
