@@ -11,6 +11,14 @@ systemctl enable docker
 systemctl start docker
 
 # ---------------------------
+# FIX 3: Wait for Docker daemon (CRITICAL)
+# ---------------------------
+until docker info >/dev/null 2>&1; do
+  echo "Waiting for Docker to be ready..."
+  sleep 2
+done
+
+# ---------------------------
 # FIX 2: Terraform variables (DO NOT REMOVE)
 # ---------------------------
 app_private_ip="${app_private_ip}"
