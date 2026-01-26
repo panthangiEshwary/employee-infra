@@ -107,13 +107,14 @@ mv /tmp/spring-boot-fixed.json /opt/monitoring/grafana/dashboards/spring-boot.js
 # ---------------------------
 # FIX JVM (Micrometer) uptime panels
 # ---------------------------
+# FIX JVM (Micrometer) uptime panels (Spring Boot 3.x)
 jq '
   if .title == "JVM (Micrometer)" then
     .panels |= map(
       if .title == "Uptime" then
-        .targets[0].expr = "jvm_uptime_seconds{job=\"spring-app\"}"
+        .targets[0].expr = "process_uptime_seconds{job=\"spring-app\"}"
       elif .title == "Start time" then
-        .targets[0].expr = "time() - jvm_uptime_seconds{job=\"spring-app\"}"
+        .targets[0].expr = "time() - process_uptime_seconds{job=\"spring-app\"}"
       else .
       end
     )
