@@ -5,7 +5,7 @@ set -ex
 # FIX 1: Correct package manager for AL2023
 # ---------------------------
 dnf update -y
-dnf install -y docker jq curl --allowerasing
+dnf install -y docker jq
 
 systemctl enable docker
 systemctl start docker
