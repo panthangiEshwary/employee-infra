@@ -94,6 +94,14 @@ resource "aws_security_group" "rds_sg" {
     description     = "Allow MySQL from EC2 only"
   }
 
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.n8n_sg.id]
+    description     = "Allow MySQL from N8N only"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -176,7 +184,12 @@ resource "aws_security_group" "n8n_sg" {
     protocol    = "tcp"
     cidr_blocks = [var.my_ip_cidr]
   }
-
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.rds_sg.id]
+  }
   # Optional: UI access from your IP (demo)
   ingress {
     from_port   = 5678
@@ -195,4 +208,5 @@ resource "aws_security_group" "n8n_sg" {
   tags = {
     Name = "n8n-sg"
   }
+
 }
